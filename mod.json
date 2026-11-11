@@ -1,0 +1,69 @@
+{
+  "id": "BetterDeconstruct",
+  "name": "Better Deconstruct",
+  "version": "1.0.0",
+  "author": "Urakka",
+  "description": "Drag a selection box in Deconstruct mode to deconstruct multiple buildings and decorations at once, with a confirmation dialog showing each building type's in-game icon, count, category filters, and total refund.",
+  "repository": {
+    "platform": "GitHub",
+    "owner": "urakkaamyx",
+    "name": "KingdomInc_BetterDeconstruct",
+    "url": "https://github.com/urakkaamyx/KingdomInc_BetterDeconstruct",
+    "branch": "main",
+    "visibility": "public",
+    "topics": [
+      "kingdom-inc",
+      "kingdom-inc-mod",
+      "bepinex",
+      "harmony",
+      "deconstruct",
+      "quality-of-life",
+      "user-interface",
+      "unity"
+    ],
+    "latestTag": "v1.0.0"
+  },
+  "distribution": {
+    "nexus": {
+      "game": "kingdominc",
+      "modId": 24,
+      "fileId": 8364474,
+      "url": "https://www.nexusmods.com/kingdominc/mods/24",
+      "requirements": [
+        {
+          "name": "Foundation",
+          "url": "https://www.nexusmods.com/kingdominc/mods/18",
+          "minimumVersion": "0.11.0",
+          "type": "nexus"
+        },
+        {
+          "name": "BepInEx 5",
+          "url": "https://github.com/BepInEx/BepInEx/releases",
+          "minimumVersion": "5.x",
+          "type": "offsite"
+        }
+      ],
+      "tags": [
+        "AI Media",
+        "AI-Generated Content",
+        "Quality of Life",
+        "User Interface"
+      ],
+      "tagsVerified": false,
+      "requirementsVerified": false
+    }
+  },
+  "development": {
+    "framework": "Foundation",
+    "language": "C#",
+    "target": "netstandard2.1",
+    "dependencies": [
+      "BepInEx 5",
+      "Foundation >= 0.11.0"
+    ]
+  },
+  "publishing": {
+    "githubReleases": "https://github.com/urakkaamyx/KingdomInc_BetterDeconstruct/releases/tag/v1.0.0",
+    "nexusMods": "https://www.nexusmods.com/kingdominc/mods/24"
+  }
+}

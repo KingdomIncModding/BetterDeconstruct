@@ -1,0 +1,29 @@
+# Only source, approved assets, and player-facing README belong on GitHub.
+# AI and local agent work remains on this machine.
+/_AI/
+/Nexus/
+/.github/
+/.agents/
+/.claude/
+/.codex/
+/AGENTS.md
+/CLAUDE.md
+/GEMINI.md
+/~tmp/
+/AI_SETUP_PROMPT.md
+
+# Build and local development outputs.
+**/bin/
+**/obj/
+.vs/
+.idea/
+*.user
+*.suo
+.env
+.env.*
+
+# Do not ignore /Assets/: approved assets may be committed.
+
+# Local build and release outputs.
+/Release/
+/Debug/
