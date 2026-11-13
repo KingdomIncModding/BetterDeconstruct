@@ -1,20 +1,18 @@
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
-using Assets.Behaviour.UI;
-using HarmonyLib;
 using KingdomFoundation.Api;
 using UnityEngine;
 
 namespace KingdomBetterDeconstruct
 {
     [BepInPlugin(Id, "Better Deconstruct", Version)]
-    [BepInDependency("urakka.kingdominc.foundation", "0.11.0")]
+    [BepInDependency("urakka.kingdominc.foundation", "0.14.0")]
     [NexusMod(24)]
     public sealed class BetterDeconstructPlugin : BaseUnityPlugin
     {
         public const string Id = "urakka.kingdominc.betterdeconstruct";
-        public const string Version = "1.0.0";
+        public const string Version = "1.0.1";
 
         internal static ManualLogSource LogSource;
 
@@ -25,7 +23,7 @@ namespace KingdomBetterDeconstruct
         internal static ConfigEntry<bool> IgnoreLockedDecorations;
         internal static ConfigEntry<bool> StayInDeconstructMode;
 
-        private Harmony _harmony;
+        private readonly System.Collections.Generic.List<System.IDisposable> _hooks = new System.Collections.Generic.List<System.IDisposable>();
         private FoundationModContext _context;
         private GameObject _boxObject;
         private GameObject _modalObject;
@@ -81,8 +79,14 @@ namespace KingdomBetterDeconstruct
             settings.AddToggle(IgnoreLockedDecorations, "Ignore Locked Decorations");
             settings.AddToggle(StayInDeconstructMode, "Stay in Deconstruct Mode After Confirming");
 
-            _harmony = new Harmony(Id);
-            _harmony.PatchAll(typeof(BetterDeconstructPlugin).Assembly);
+            _hooks.Add(FoundationApi.GameHooks.Subscribe(Id, GameHookPoints.DeconstructionUpdate,
+                before: Patches.DeconstructOverlayUpdatePatch.Before));
+            _hooks.Add(FoundationApi.GameHooks.Subscribe(Id, GameHookPoints.Cancel,
+                before: Patches.GameUIProcessCancelPatch.Before, priority: 100));
+            _hooks.Add(FoundationApi.GameHooks.Subscribe(Id, GameHookPoints.Escape,
+                before: Patches.GameUIProcessEscapePatch.Before, priority: 100));
+            _hooks.Add(FoundationApi.GameHooks.Subscribe(Id, GameHookPoints.DeconstructionVisibility,
+                after: Patches.GameUIToggleDeconstructModePatch.After));
 
             Logger.LogInfo("Better Deconstruct initialized.");
         }
@@ -94,12 +98,12 @@ namespace KingdomBetterDeconstruct
 
         internal static void EnsureUiInitialized()
         {
-            if (_instance == null || !GameUI.Instance)
+            if (_instance == null || !FoundationApi.UiAccess.Root)
             {
                 return;
             }
 
-            _instance.AttachToGameUi(GameUI.Instance);
+            _instance.AttachToGameUi(FoundationApi.UiAccess.Root);
         }
 
         private static BetterDeconstructPlugin _instance;
@@ -109,7 +113,7 @@ namespace KingdomBetterDeconstruct
             _instance = this;
         }
 
-        private void AttachToGameUi(GameUI ui)
+        private void AttachToGameUi(Component ui)
         {
             if (_boxObject == null)
             {
@@ -136,7 +140,8 @@ namespace KingdomBetterDeconstruct
                 _instance = null;
             }
 
-            _harmony?.UnpatchSelf();
+            foreach (var hook in _hooks) hook.Dispose();
+            _hooks.Clear();
             _context?.Dispose();
 
             if (_boxObject != null)

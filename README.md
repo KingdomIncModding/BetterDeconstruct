@@ -1,6 +1,8 @@
 # Better Deconstruct
 
-[GitHub releases](https://github.com/urakkaamyx/KingdomInc_BetterDeconstruct/releases) · [Nexus Mods](https://www.nexusmods.com/kingdominc/mods/24) · Version 1.0.0
+**Current release: 1.0.1 — for Kingdom Inc game version 1.0.14.**
+
+[GitHub releases](https://github.com/urakkaamyx/KingdomInc_BetterDeconstruct/releases) · [Nexus Mods](https://www.nexusmods.com/kingdominc/mods/24) · Version 1.0.1
 
 Upgrade Deconstruct mode in Kingdom Inc. with drag-box area selection, live refund previews, and a confirmation dialog that breaks down every selected building type with its in-game icon and count before anything is removed.
 
@@ -30,12 +32,12 @@ Single-clicking in Deconstruct mode continues to remove individual buildings, pi
 
 - Kingdom Inc (Windows x64 Mono)
 - [BepInEx 5](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.6) (5.4.23.6 or newer)
-- [Foundation](https://www.nexusmods.com/kingdominc/mods/18) (0.11.0 or newer)
+- [Foundation](https://www.nexusmods.com/kingdominc/mods/18) (0.14.0 or newer)
 
 ## Installation
 
 1. Install BepInEx 5 for Kingdom Inc.
-2. Install Foundation (0.11.0 or newer).
+2. Install Foundation (0.14.0 or newer).
 3. Extract the release archive into your Kingdom Inc game directory.
 4. Verify that `BepInEx/plugins/BetterDeconstruct/BetterDeconstruct.dll` and `BepInEx/plugins/BetterDeconstruct/mod.json` are present.
 5. Launch the game and enter Deconstruct mode in your workshop.
@@ -44,10 +46,10 @@ Single-clicking in Deconstruct mode continues to remove individual buildings, pi
 
 | Class.Method | Hook Type | Impact |
 |---|---|---|
-| DeconstructOverlay.Update | Harmony Prefix | Intercepts drag-box selection and confirmation modal states in Deconstruct mode while leaving normal single-click deconstruction untouched. |
-| GameUI.ProcessCancel | Harmony Prefix | Cancels an active deconstruct selection box drag or closes the confirmation dialog on right-click before exiting Deconstruct mode. |
-| GameUI.ProcessEscape | Harmony Prefix | Cancels an active deconstruct selection box drag or closes the confirmation dialog on Escape before opening the pause menu. |
-| GameUI.ToggleDeconstructMode | Harmony Postfix | Resets any active selection box drag and closes the confirmation dialog when Deconstruct mode is turned off. |
+| DeconstructOverlay.Update | Foundation hook (prefix) | Intercepts drag-box selection and confirmation modal states in Deconstruct mode while leaving normal single-click deconstruction untouched. |
+| GameUI.ProcessCancel | Foundation hook (prefix) | Cancels an active deconstruct selection box drag or closes the confirmation dialog on right-click before exiting Deconstruct mode. |
+| GameUI.ProcessEscape | Foundation hook (prefix) | Cancels an active deconstruct selection box drag or closes the confirmation dialog on Escape before opening the pause menu. |
+| GameUI.ToggleDeconstructMode | Foundation hook (postfix) | Resets any active selection box drag and closes the confirmation dialog when Deconstruct mode is turned off. |
 
 ## Removal
 

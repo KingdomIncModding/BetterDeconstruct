@@ -1,14 +1,7 @@
-using Assets.Behaviour.Flow;
-using Assets.Behaviour.UI;
-using Assets.Behaviour.UI.BuyMenu;
-using Assets.Behaviour.UI.HUD;
-using Assets.Behaviour.UI.Shared;
-using Assets.Source.Player;
-using HarmonyLib;
+using KingdomFoundation.Api;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
-using GamePlayerInput = Assets.Behaviour.Input.PlayerInput;
 
 namespace KingdomBetterDeconstruct
 {
@@ -17,15 +10,6 @@ namespace KingdomBetterDeconstruct
         private const float DragThresholdPixels = 12f;
         private const float BorderThickness = 2f;
         private const float PreviewIntervalSeconds = 0.08f;
-
-        private static readonly AccessTools.FieldRef<GameUI, AreaCopyGhost> CloneGhostField =
-            AccessTools.FieldRefAccess<GameUI, AreaCopyGhost>("_cloneGhost");
-
-        private static readonly AccessTools.FieldRef<DeconstructOverlay, RectTransform> RefundContainerField =
-            AccessTools.FieldRefAccess<DeconstructOverlay, RectTransform>("_refundContainer");
-
-        private static readonly AccessTools.FieldRef<DeconstructOverlay, CurrencyDisplay> RefundDisplayField =
-            AccessTools.FieldRefAccess<DeconstructOverlay, CurrencyDisplay>("_refund");
 
         public static DeconstructBoxController Instance { get; private set; }
         public static bool IsDragging => Instance != null && Instance._isDragging;
@@ -40,12 +24,11 @@ namespace KingdomBetterDeconstruct
         private Vector2Int _anchorWorld;
         private float _nextPreviewTime;
 
-        public void Initialize(GameUI ui)
+        public void Initialize(Component ui)
         {
             Instance = this;
 
-            AreaCopyGhost cloneGhost = CloneGhostField(ui);
-            RectTransform templateRect = cloneGhost != null ? cloneGhost.GetComponent<RectTransform>() : null;
+            RectTransform templateRect = FoundationApi.UiAccess.WorldOverlayTemplate;
             Transform worldParent = templateRect != null ? templateRect.parent : ui.transform;
 
             _boxRect = gameObject.GetComponent<RectTransform>();
@@ -101,7 +84,7 @@ namespace KingdomBetterDeconstruct
             _visualRoot.SetActive(false);
         }
 
-        public bool HandleOverlayUpdate(DeconstructOverlay overlay)
+        public bool HandleOverlayUpdate(Component overlay)
         {
             if (DeconstructConfirmModal.IsOpen)
             {
@@ -112,7 +95,7 @@ namespace KingdomBetterDeconstruct
                 return true;
             }
 
-            if (!WorldFlowManager.Visible || !WorldFlowManager.Instance || !GameUI.Instance || GameUI.MenuVisible)
+            if (!FoundationApi.UiAccess.IsWorkspaceVisible || !FoundationApi.UiAccess.Root || FoundationApi.UiAccess.IsMenuVisible)
             {
                 ResetState(overlay);
                 return false;
@@ -128,7 +111,7 @@ namespace KingdomBetterDeconstruct
             {
                 HideVisuals();
                 HideOverlayRefund(overlay);
-                if (!mouse.leftButton.isPressed && !GamePlayerInput.InteractReleased)
+                if (!mouse.leftButton.isPressed && !FoundationApi.View.InteractReleased)
                 {
                     _suppressUntilRelease = false;
                 }
@@ -143,7 +126,7 @@ namespace KingdomBetterDeconstruct
                     _pointerDown = true;
                     _isDragging = false;
                     _startScreenPos = mouse.position.ReadValue();
-                    _anchorWorld = GamePlayerInput.MouseWorld;
+                    _anchorWorld = FoundationApi.View.MouseWorld;
                 }
             }
 
@@ -152,7 +135,7 @@ namespace KingdomBetterDeconstruct
                 return false;
             }
 
-            if (mouse.leftButton.isPressed && !GamePlayerInput.InteractReleased)
+            if (mouse.leftButton.isPressed && !FoundationApi.View.InteractReleased)
             {
                 Vector2 currentScreenPos = mouse.position.ReadValue();
                 if (!_isDragging)
@@ -172,7 +155,7 @@ namespace KingdomBetterDeconstruct
                 if (_isDragging)
                 {
                     PanAtScreenEdge();
-                    Vector2Int cursorWorld = GamePlayerInput.MouseWorld;
+                    Vector2Int cursorWorld = FoundationApi.View.MouseWorld;
                     UpdateBoxTransform(_anchorWorld, cursorWorld);
                     UpdateLiveRefundPreview(overlay, _anchorWorld, cursorWorld);
                     return true;
@@ -181,7 +164,7 @@ namespace KingdomBetterDeconstruct
                 return false;
             }
 
-            if (GamePlayerInput.InteractReleased || mouse.leftButton.wasReleasedThisFrame || !mouse.leftButton.isPressed)
+            if (FoundationApi.View.InteractReleased || mouse.leftButton.wasReleasedThisFrame || !mouse.leftButton.isPressed)
             {
                 bool wasDragging = _isDragging;
                 _pointerDown = false;
@@ -191,11 +174,19 @@ namespace KingdomBetterDeconstruct
                 if (wasDragging)
                 {
                     HideOverlayRefund(overlay);
-                    Vector2Int cursorWorld = GamePlayerInput.MouseWorld;
+                    Vector2Int cursorWorld = FoundationApi.View.MouseWorld;
                     DeconstructSelection selection = DeconstructSelection.FromBox(
                         _anchorWorld,
                         cursorWorld,
                         BetterDeconstructPlugin.IgnoreLockedDecorations.Value);
+
+                    // Native Single mode exits on the selection release. Do this
+                    // before opening the independent confirmation, because the
+                    // ToggleDeconstructMode cleanup cancels an already-open modal.
+                    if (FoundationApi.UiAccess.DeconstructionMode == GameDeconstructionMode.Single)
+                    {
+                        FoundationApi.UiAccess.SetDeconstructionVisible(false);
+                    }
 
                     if (selection.HasAnyItems && DeconstructConfirmModal.Instance != null)
                     {
@@ -222,7 +213,7 @@ namespace KingdomBetterDeconstruct
             HideVisuals();
         }
 
-        public void ResetState(DeconstructOverlay overlay = null)
+        public void ResetState(Component overlay = null)
         {
             _pointerDown = false;
             _isDragging = false;
@@ -234,30 +225,7 @@ namespace KingdomBetterDeconstruct
             }
         }
 
-        private static bool IsPointerOverHudUi(DeconstructOverlay overlay)
-        {
-            foreach (GameObject go in UIHelper.GetAllMouseOverUI())
-            {
-                if (!go)
-                {
-                    continue;
-                }
-
-                if (go.GetComponentInParent<WorldFlowManager>() != null)
-                {
-                    continue;
-                }
-
-                if (overlay != null && go.transform.IsChildOf(overlay.transform))
-                {
-                    continue;
-                }
-
-                return true;
-            }
-
-            return false;
-        }
+        private static bool IsPointerOverHudUi(Component overlay) => FoundationApi.UiAccess.IsPointerOverHud(overlay);
 
         private void UpdateBoxTransform(Vector2Int anchor, Vector2Int cursor)
         {
@@ -275,7 +243,7 @@ namespace KingdomBetterDeconstruct
             _boxRect.sizeDelta = new Vector2(Mathf.Max(2, maxX - minX), Mathf.Max(2, maxY - minY));
         }
 
-        private void UpdateLiveRefundPreview(DeconstructOverlay overlay, Vector2Int anchor, Vector2Int cursor)
+        private void UpdateLiveRefundPreview(Component overlay, Vector2Int anchor, Vector2Int cursor)
         {
             if (overlay == null)
             {
@@ -289,13 +257,6 @@ namespace KingdomBetterDeconstruct
 
             _nextPreviewTime = Time.unscaledTime + PreviewIntervalSeconds;
 
-            RectTransform refundContainer = RefundContainerField(overlay);
-            CurrencyDisplay refundDisplay = RefundDisplayField(overlay);
-            if (refundContainer == null || refundDisplay == null)
-            {
-                return;
-            }
-
             DeconstructSelection selection = DeconstructSelection.FromBox(
                 anchor,
                 cursor,
@@ -303,39 +264,22 @@ namespace KingdomBetterDeconstruct
 
             if (!selection.HasAnyItems)
             {
-                refundContainer.gameObject.SetActive(false);
+                FoundationApi.UiAccess.HideDeconstructionRefund(overlay);
                 return;
             }
 
-            CurrencyCollection refund = selection.CalculateRefund(
+            GameMoney refund = selection.CalculateRefund(
                 BetterDeconstructPlugin.DefaultIncludeBuildings.Value,
                 BetterDeconstructPlugin.DefaultIncludeContainers.Value,
                 BetterDeconstructPlugin.DefaultIncludeLabels.Value,
                 BetterDeconstructPlugin.DefaultIncludeStickers.Value);
 
-            if (refund != null && !refund.IsEmpty)
-            {
-                refundDisplay.SetAmount(refund);
-                refundContainer.gameObject.SetActive(true);
-            }
-            else
-            {
-                refundContainer.gameObject.SetActive(false);
-            }
+            FoundationApi.UiAccess.SetDeconstructionRefund(overlay, refund);
         }
 
-        private static void HideOverlayRefund(DeconstructOverlay overlay)
+        private static void HideOverlayRefund(Component overlay)
         {
-            if (overlay == null)
-            {
-                return;
-            }
-
-            RectTransform refundContainer = RefundContainerField(overlay);
-            if (refundContainer != null && refundContainer.gameObject.activeSelf)
-            {
-                refundContainer.gameObject.SetActive(false);
-            }
+            if (overlay) FoundationApi.UiAccess.HideDeconstructionRefund(overlay);
         }
 
         private void HideVisuals()
@@ -348,7 +292,7 @@ namespace KingdomBetterDeconstruct
 
         private static void PanAtScreenEdge()
         {
-            if (!WorldFlowCamera.Instance || Mouse.current == null)
+            if (!FoundationApi.View.IsReady || Mouse.current == null)
             {
                 return;
             }
@@ -358,9 +302,9 @@ namespace KingdomBetterDeconstruct
             int edgeY = pos.y < 100f ? -1 : (pos.y > Screen.height - 100 ? 1 : 0);
             if (edgeX != 0 || edgeY != 0)
             {
-                float zoomFactor = Mathf.Max(1f, 5f - WorldFlowCamera.Instance.ZoomLevel);
+                float zoomFactor = Mathf.Max(1f, 5f - FoundationApi.View.CameraZoom);
                 float dt = Mathf.Min(0.1f, Time.unscaledDeltaTime) * 450f * zoomFactor;
-                WorldFlowCamera.Instance.Move(edgeX * dt, edgeY * dt);
+                FoundationApi.View.PanCamera(edgeX * dt, edgeY * dt);
             }
         }
 

@@ -1,13 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Assets.Behaviour.Flow;
-using Assets.Behaviour.UI;
-using Assets.Behaviour.UI.HUD;
-using Assets.Behaviour.UI.Shared;
-using Assets.Source.Player;
-using Assets.Source.Util;
-using HarmonyLib;
 using KingdomFoundation.Api;
 using TMPro;
 using UnityEngine;
@@ -16,19 +9,10 @@ using UnityEngine.UI;
 
 namespace KingdomBetterDeconstruct
 {
-    internal sealed class DeconstructConfirmModal : UIBlocksZoom
+    internal sealed class DeconstructConfirmModal : MonoBehaviour
     {
         private const float PanelWidth = 560f;
         private const float PanelHeight = 560f;
-
-        private static readonly AccessTools.FieldRef<DeconstructOverlay, CurrencyDisplay> OverlayRefundField =
-            AccessTools.FieldRefAccess<DeconstructOverlay, CurrencyDisplay>("_refund");
-
-        private static readonly AccessTools.FieldRef<CurrencyDisplay, Sprite> CopperIconField =
-            AccessTools.FieldRefAccess<CurrencyDisplay, Sprite>("_copperIcon");
-
-        private static readonly AccessTools.FieldRef<CurrencyDisplay, Sprite> SilverIconField =
-            AccessTools.FieldRefAccess<CurrencyDisplay, Sprite>("_silverIcon");
 
         public static DeconstructConfirmModal Instance { get; private set; }
         public static bool IsOpen => Instance != null && Instance.gameObject.activeSelf;
@@ -57,15 +41,14 @@ namespace KingdomBetterDeconstruct
         private bool includeLabels = true;
         private bool includeStickers = true;
 
-        private Sprite copperIcon;
-        private Sprite silverIcon;
+        private FoundationUiInputBlocker inputBlocker;
 
-        public void Initialize(GameUI ui, Transform parentCanvasTransform)
+        public void Initialize(Component ui, Transform parentCanvasTransform)
         {
             Instance = this;
             theme = new DeconstructUiTheme();
             font = ui.GetComponentsInChildren<TMP_Text>(true).Select(t => t.font).FirstOrDefault(f => f != null);
-            CacheCurrencySprites(ui);
+            inputBlocker = gameObject.AddComponent<FoundationUiInputBlocker>();
 
             transform.SetParent(parentCanvasTransform, false);
             var root = (RectTransform)transform;
@@ -95,7 +78,7 @@ namespace KingdomBetterDeconstruct
 
             // Header icon + title
             Sprite headerSprite = FoundationApi.Presentation.FindSprite("Icons_31") ??
-                                  FoundationApi.Machines.Catalog.FirstOrDefault()?.Icon;
+                                  FoundationApi.WorkspaceAccess.Catalog.FirstOrDefault()?.Icon;
             if (headerSprite != null)
             {
                 CreateIcon(panel, headerSprite, 22f, 18f, 40f);
@@ -172,7 +155,7 @@ namespace KingdomBetterDeconstruct
 
             gameObject.SetActive(true);
             transform.SetAsLastSibling();
-            UISounds.WindowOpen();
+            FoundationApi.UiAccess.PlaySound(GameUiSound.WindowOpen);
             RefreshView();
         }
 
@@ -184,9 +167,9 @@ namespace KingdomBetterDeconstruct
             }
 
             currentSelection = null;
-            base.OnPointerExit(null);
+            inputBlocker?.OnPointerExit(null);
             gameObject.SetActive(false);
-            UISounds.WindowClose();
+            FoundationApi.UiAccess.PlaySound(GameUiSound.WindowClose);
         }
 
         private void Confirm()
@@ -199,15 +182,14 @@ namespace KingdomBetterDeconstruct
 
             DeconstructSelection toExecute = currentSelection;
             currentSelection = null;
-            base.OnPointerExit(null);
+            inputBlocker?.OnPointerExit(null);
             gameObject.SetActive(false);
 
             toExecute.ExecuteDeconstruct(includeBuildings, includeContainers, includeLabels, includeStickers);
 
-            if (!BetterDeconstructPlugin.StayInDeconstructMode.Value && GameUI.Instance &&
-                GameUI.Instance.IsActive(GameUIType.Deconstruct))
+            if (!BetterDeconstructPlugin.StayInDeconstructMode.Value && FoundationApi.UiAccess.IsDeconstructionVisible)
             {
-                GameUI.Instance.ToggleDeconstructMode(false);
+                FoundationApi.UiAccess.SetDeconstructionVisible(false);
             }
         }
 
@@ -218,11 +200,10 @@ namespace KingdomBetterDeconstruct
                 return;
             }
 
-            if (!WorldFlowManager.Visible || !GameUI.Instance || GameUI.MenuVisible ||
-                !GameUI.Instance.IsActive(GameUIType.Deconstruct))
+            if (!FoundationApi.UiAccess.IsWorkspaceVisible || !FoundationApi.UiAccess.Root || FoundationApi.UiAccess.IsMenuVisible)
             {
                 currentSelection = null;
-                base.OnPointerExit(null);
+                inputBlocker?.OnPointerExit(null);
                 gameObject.SetActive(false);
                 return;
             }
@@ -239,12 +220,12 @@ namespace KingdomBetterDeconstruct
 
         private void OnDisable()
         {
-            base.OnPointerExit(null);
+            inputBlocker?.OnPointerExit(null);
         }
 
         private void ToggleCategory(DeconstructCategory category)
         {
-            UISounds.CraftStep();
+            FoundationApi.UiAccess.PlaySound(GameUiSound.CraftStep);
             switch (category)
             {
                 case DeconstructCategory.Buildings:
@@ -328,7 +309,7 @@ namespace KingdomBetterDeconstruct
             }
 
             // Update Refund Display
-            CurrencyCollection refund = currentSelection.CalculateRefund(
+            GameMoney refund = currentSelection.CalculateRefund(
                 includeBuildings, includeContainers, includeLabels, includeStickers);
             RebuildRefundUI(refund);
 
@@ -378,7 +359,7 @@ namespace KingdomBetterDeconstruct
             countLabel.alignment = TextAlignmentOptions.MidlineRight;
         }
 
-        private void RebuildRefundUI(CurrencyCollection refund)
+        private void RebuildRefundUI(GameMoney refund)
         {
             ClearChildren(refundContent);
             if (refund == null || refund.IsEmpty)
@@ -388,21 +369,21 @@ namespace KingdomBetterDeconstruct
             }
 
             bool anyAdded = false;
-            foreach (var entry in refund.GetCurrency())
+            foreach (var entry in refund.Entries)
             {
-                if (entry.amt <= 0)
+                if (entry.Amount <= 0)
                 {
                     continue;
                 }
 
                 anyAdded = true;
-                if (entry.c == Currency.Gold)
+                if (entry.CurrencyId == "Gold")
                 {
-                    AddGoldRefundChips(entry.amt);
+                    AddGoldRefundChips(entry.Amount);
                 }
                 else
                 {
-                    CreateRefundChip(entry.c.GetIcon(), GameMath.FormatNumber(entry.amt), DeconstructUiTheme.Paper);
+                    CreateRefundChip(entry.Icon, FoundationApi.UiAccess.FormatNumber(entry.Amount), DeconstructUiTheme.Paper);
                 }
             }
 
@@ -422,15 +403,15 @@ namespace KingdomBetterDeconstruct
 
             if (gold > 0)
             {
-                CreateRefundChip(Currency.Gold.GetIcon(), GameMath.FormatNumber(gold), DeconstructUiTheme.Paper);
+                CreateRefundChip(FoundationApi.UiAccess.CurrencyIcon("Gold"), FoundationApi.UiAccess.FormatNumber(gold), DeconstructUiTheme.Paper);
             }
             if (silver > 0 || gold > 0)
             {
-                CreateRefundChip(silverIcon ?? Currency.Gold.GetIcon(), silver.ToString(), DeconstructUiTheme.Paper);
+                CreateRefundChip(FoundationApi.UiAccess.CurrencyIcon("Gold", 1), silver.ToString(), DeconstructUiTheme.Paper);
             }
             if (copper > 0 || (gold == 0 && silver == 0))
             {
-                CreateRefundChip(copperIcon ?? Currency.Gold.GetIcon(), copper.ToString(), DeconstructUiTheme.Paper);
+                CreateRefundChip(FoundationApi.UiAccess.CurrencyIcon("Gold", 2), copper.ToString(), DeconstructUiTheme.Paper);
             }
         }
 
@@ -470,27 +451,6 @@ namespace KingdomBetterDeconstruct
             label.raycastTarget = false;
             ContentSizeFitter fitter = textRect.gameObject.AddComponent<ContentSizeFitter>();
             fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
-        }
-
-        private void CacheCurrencySprites(GameUI ui)
-        {
-            try
-            {
-                DeconstructOverlay overlay = ui.GetComponentInChildren<DeconstructOverlay>(true);
-                if (overlay != null)
-                {
-                    CurrencyDisplay display = OverlayRefundField(overlay);
-                    if (display != null)
-                    {
-                        copperIcon = CopperIconField(display);
-                        silverIcon = SilverIconField(display);
-                    }
-                }
-            }
-            catch
-            {
-                // Fallback to gold icon if reflection fields ever change.
-            }
         }
 
         private static void ClearChildren(Transform parent)

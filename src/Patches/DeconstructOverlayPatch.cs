@@ -1,24 +1,20 @@
-using Assets.Behaviour.UI.HUD;
-using HarmonyLib;
+using KingdomFoundation.Api;
 
 namespace KingdomBetterDeconstruct.Patches
 {
-    [HarmonyPatch(typeof(DeconstructOverlay), "Update")]
     internal static class DeconstructOverlayUpdatePatch
     {
-        [HarmonyPrefix]
-        private static bool Prefix(DeconstructOverlay __instance)
+        internal static void Before(GameHookCall call)
         {
-            BetterDeconstructPlugin.EnsureUiInitialized();
-
-            if (DeconstructBoxController.Instance != null &&
-                DeconstructBoxController.Instance.HandleOverlayUpdate(__instance))
+            if (FoundationApi.UiAccess.DeconstructionMode == GameDeconstructionMode.Hold &&
+                !FoundationApi.UiAccess.DeconstructionHeld && !DeconstructConfirmModal.IsOpen)
             {
-                return false;
+                DeconstructBoxController.Instance?.ResetState(call.View);
+                return;
             }
-
-            return true;
+            BetterDeconstructPlugin.EnsureUiInitialized();
+            if (DeconstructBoxController.Instance != null &&
+                DeconstructBoxController.Instance.HandleOverlayUpdate(call.View)) call.Cancel();
         }
     }
 }
-

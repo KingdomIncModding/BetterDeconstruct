@@ -1,9 +1,9 @@
 {
   "id": "BetterDeconstruct",
   "name": "Better Deconstruct",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Urakka",
-  "description": "Drag a selection box in Deconstruct mode to deconstruct multiple buildings and decorations at once, with a confirmation dialog showing each building type's in-game icon, count, category filters, and total refund.",
+  "description": "For Kingdom Inc game version 1.0.14. Drag a selection box in Deconstruct mode to deconstruct multiple buildings and decorations at once, with a confirmation dialog showing each building type's in-game icon, count, category filters, and total refund.",
   "repository": {
     "platform": "GitHub",
     "owner": "urakkaamyx",
@@ -33,7 +33,7 @@
         {
           "name": "Foundation",
           "url": "https://www.nexusmods.com/kingdominc/mods/18",
-          "minimumVersion": "0.11.0",
+          "minimumVersion": "0.14.0",
           "type": "nexus"
         },
         {
@@ -50,7 +50,8 @@
         "User Interface"
       ],
       "tagsVerified": false,
-      "requirementsVerified": false
+      "requirementsVerified": true,
+      "runtimeVersionId": "46785078755450"
     }
   },
   "development": {
@@ -59,11 +60,13 @@
     "target": "netstandard2.1",
     "dependencies": [
       "BepInEx 5",
-      "Foundation >= 0.11.0"
-    ]
+      "Foundation 0.14.0"
+    ],
+    "gameIntegration": "Foundation"
   },
   "publishing": {
     "githubReleases": "https://github.com/urakkaamyx/KingdomInc_BetterDeconstruct/releases/tag/v1.0.0",
-    "nexusMods": "https://www.nexusmods.com/kingdominc/mods/24"
+    "nexusMods": "https://www.nexusmods.com/kingdominc/mods/24",
+    "archivePreviousReleases": false
   }
 }
