@@ -6,9 +6,9 @@
   "description": "For Kingdom Inc game version 1.0.14. Drag a selection box in Deconstruct mode to deconstruct multiple buildings and decorations at once, with a confirmation dialog showing each building type's in-game icon, count, category filters, and total refund.",
   "repository": {
     "platform": "GitHub",
-    "owner": "urakkaamyx",
+    "owner": "KingdomIncModding",
     "name": "KingdomInc_BetterDeconstruct",
-    "url": "https://github.com/urakkaamyx/KingdomInc_BetterDeconstruct",
+    "url": "https://github.com/KingdomIncModding/KingdomInc_BetterDeconstruct",
     "branch": "main",
     "visibility": "public",
     "topics": [
@@ -65,7 +65,7 @@
     "gameIntegration": "Foundation"
   },
   "publishing": {
-    "githubReleases": "https://github.com/urakkaamyx/KingdomInc_BetterDeconstruct/releases/tag/v1.0.0",
+    "githubReleases": "https://github.com/KingdomIncModding/KingdomInc_BetterDeconstruct/releases/tag/v1.0.0",
     "nexusMods": "https://www.nexusmods.com/kingdominc/mods/24",
     "archivePreviousReleases": false
   }
