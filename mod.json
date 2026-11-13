@@ -7,8 +7,8 @@
   "repository": {
     "platform": "GitHub",
     "owner": "KingdomIncModding",
-    "name": "KingdomInc_BetterDeconstruct",
-    "url": "https://github.com/KingdomIncModding/KingdomInc_BetterDeconstruct",
+    "name": "BetterDeconstruct",
+    "url": "https://github.com/KingdomIncModding/BetterDeconstruct",
     "branch": "main",
     "visibility": "public",
     "topics": [
@@ -65,7 +65,7 @@
     "gameIntegration": "Foundation"
   },
   "publishing": {
-    "githubReleases": "https://github.com/KingdomIncModding/KingdomInc_BetterDeconstruct/releases/tag/v1.0.0",
+    "githubReleases": "https://github.com/KingdomIncModding/BetterDeconstruct/releases/tag/v1.0.0",
     "nexusMods": "https://www.nexusmods.com/kingdominc/mods/24",
     "archivePreviousReleases": false
   }
