@@ -1,8 +1,8 @@
 # Better Deconstruct
 
-**Current release: 1.0.1 — for Kingdom Inc game version 1.0.14.**
+**Current release: 1.0.2 — for Kingdom Inc game version 1.0.14.**
 
-[GitHub releases](https://github.com/KingdomIncModding/BetterDeconstruct/releases) · [Nexus Mods](https://www.nexusmods.com/kingdominc/mods/24) · Version 1.0.1
+[GitHub releases](https://github.com/KingdomIncModding/BetterDeconstruct/releases) · [Nexus Mods](https://www.nexusmods.com/kingdominc/mods/24) · Version 1.0.2
 
 Upgrade Deconstruct mode in Kingdom Inc. with drag-box area selection, live refund previews, and a confirmation dialog that breaks down every selected building type with its in-game icon and count before anything is removed.
 
@@ -32,12 +32,12 @@ Single-clicking in Deconstruct mode continues to remove individual buildings, pi
 
 - Kingdom Inc (Windows x64 Mono)
 - [BepInEx 5](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.6) (5.4.23.6 or newer)
-- [Foundation](https://www.nexusmods.com/kingdominc/mods/18) (0.14.0 or newer)
+- [Foundation](https://www.nexusmods.com/kingdominc/mods/18) (0.14.4 or newer)
 
 ## Installation
 
 1. Install BepInEx 5 for Kingdom Inc.
-2. Install Foundation (0.14.0 or newer).
+2. Install Foundation (0.14.4 or newer).
 3. Extract the release archive into your Kingdom Inc game directory.
 4. Verify that `BepInEx/plugins/BetterDeconstruct/BetterDeconstruct.dll` and `BepInEx/plugins/BetterDeconstruct/mod.json` are present.
 5. Launch the game and enter Deconstruct mode in your workshop.

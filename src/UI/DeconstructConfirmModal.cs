@@ -138,26 +138,25 @@ namespace KingdomBetterDeconstruct
             }
 
             currentSelection = selection;
+            openWorkspace = FoundationApi.Kingdom?.ActiveWorkspace;
+            openWorkspaceBuildingCount = openWorkspace?.BuildingCount ?? 0;
             includeBuildings = BetterDeconstructPlugin.DefaultIncludeBuildings.Value;
             includeContainers = BetterDeconstructPlugin.DefaultIncludeContainers.Value;
             includeLabels = BetterDeconstructPlugin.DefaultIncludeLabels.Value;
             includeStickers = BetterDeconstructPlugin.DefaultIncludeStickers.Value;
-
-            // If the user's default filters exclude everything that was actually selected,
-            // enable the categories that are present so the modal isn't blank on open.
-            if (selection.GetSelectedCount(includeBuildings, includeContainers, includeLabels, includeStickers) == 0)
-            {
-                includeBuildings = selection.TotalBuildingNodes > 0;
-                includeContainers = selection.TotalContainers > 0;
-                includeLabels = selection.TotalLabels > 0;
-                includeStickers = selection.TotalStickers > 0;
-            }
+            lastLiveFingerprint = BuildLiveFingerprint();
+            nextLiveCheck = Time.unscaledTime + 0.25f;
 
             gameObject.SetActive(true);
             transform.SetAsLastSibling();
             FoundationApi.UiAccess.PlaySound(GameUiSound.WindowOpen);
             RefreshView();
         }
+
+        private GameWorkspace openWorkspace;
+        private int openWorkspaceBuildingCount;
+        private string lastLiveFingerprint;
+        private float nextLiveCheck;
 
         public void Cancel()
         {
@@ -167,6 +166,7 @@ namespace KingdomBetterDeconstruct
             }
 
             currentSelection = null;
+            openWorkspace = null;
             inputBlocker?.OnPointerExit(null);
             gameObject.SetActive(false);
             FoundationApi.UiAccess.PlaySound(GameUiSound.WindowClose);
@@ -174,7 +174,14 @@ namespace KingdomBetterDeconstruct
 
         private void Confirm()
         {
-            if (currentSelection == null)
+            if (currentSelection == null || openWorkspace != FoundationApi.Kingdom?.ActiveWorkspace)
+            {
+                Cancel();
+                return;
+            }
+
+            currentSelection.PruneUnavailable(BetterDeconstructPlugin.IgnoreLockedDecorations.Value);
+            if (!currentSelection.HasAnyItems)
             {
                 Cancel();
                 return;
@@ -182,10 +189,19 @@ namespace KingdomBetterDeconstruct
 
             DeconstructSelection toExecute = currentSelection;
             currentSelection = null;
+            openWorkspace = null;
             inputBlocker?.OnPointerExit(null);
             gameObject.SetActive(false);
 
-            toExecute.ExecuteDeconstruct(includeBuildings, includeContainers, includeLabels, includeStickers);
+            try
+            {
+                toExecute.ExecuteDeconstruct(includeBuildings, includeContainers, includeLabels, includeStickers);
+            }
+            catch (System.Exception error)
+            {
+                BetterDeconstructPlugin.LogSource?.LogError("Batch deconstruct failed and was rolled back: " + error);
+                FoundationApi.UiAccess.ShowPointerWarning("Deconstruction failed. No items were removed.");
+            }
 
             if (!BetterDeconstructPlugin.StayInDeconstructMode.Value && FoundationApi.UiAccess.IsDeconstructionVisible)
             {
@@ -200,12 +216,34 @@ namespace KingdomBetterDeconstruct
                 return;
             }
 
-            if (!FoundationApi.UiAccess.IsWorkspaceVisible || !FoundationApi.UiAccess.Root || FoundationApi.UiAccess.IsMenuVisible)
+            if (!FoundationApi.UiAccess.IsWorkspaceVisible || !FoundationApi.UiAccess.Root || FoundationApi.UiAccess.IsMenuVisible
+                || currentSelection == null || openWorkspace != FoundationApi.Kingdom?.ActiveWorkspace)
             {
                 currentSelection = null;
+                openWorkspace = null;
                 inputBlocker?.OnPointerExit(null);
                 gameObject.SetActive(false);
                 return;
+            }
+
+            if (Time.unscaledTime >= nextLiveCheck)
+            {
+                nextLiveCheck = Time.unscaledTime + 0.25f;
+                bool pruned = currentSelection.PruneUnavailable(BetterDeconstructPlugin.IgnoreLockedDecorations.Value);
+                if (!currentSelection.HasAnyItems)
+                {
+                    Cancel();
+                    return;
+                }
+
+                string fingerprint = BuildLiveFingerprint();
+                int currentBuildingCount = openWorkspace?.BuildingCount ?? 0;
+                if (pruned || !string.Equals(fingerprint, lastLiveFingerprint, System.StringComparison.Ordinal) || currentBuildingCount != openWorkspaceBuildingCount)
+                {
+                    lastLiveFingerprint = fingerprint;
+                    openWorkspaceBuildingCount = currentBuildingCount;
+                    RefreshView();
+                }
             }
 
             Keyboard kb = Keyboard.current;
@@ -216,6 +254,13 @@ namespace KingdomBetterDeconstruct
                     Confirm();
                 }
             }
+        }
+
+        private string BuildLiveFingerprint()
+        {
+            if (currentSelection == null)
+                return string.Empty;
+            return $"{currentSelection.TotalBuildingUnits}:{currentSelection.TotalBuildingNodes}:{currentSelection.TotalContainers}:{currentSelection.TotalLabels}:{currentSelection.TotalStickers}";
         }
 
         private void OnDisable()

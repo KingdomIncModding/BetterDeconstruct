@@ -1,72 +1,73 @@
 {
-  "id": "BetterDeconstruct",
-  "name": "Better Deconstruct",
-  "version": "1.0.1",
-  "author": "Urakka",
-  "description": "For Kingdom Inc game version 1.0.14. Drag a selection box in Deconstruct mode to deconstruct multiple buildings and decorations at once, with a confirmation dialog showing each building type's in-game icon, count, category filters, and total refund.",
-  "repository": {
-    "platform": "GitHub",
-    "owner": "KingdomIncModding",
-    "name": "BetterDeconstruct",
-    "url": "https://github.com/KingdomIncModding/BetterDeconstruct",
-    "branch": "main",
-    "visibility": "public",
-    "topics": [
-      "kingdom-inc",
-      "kingdom-inc-mod",
-      "bepinex",
-      "harmony",
-      "deconstruct",
-      "quality-of-life",
-      "user-interface",
-      "unity"
-    ],
-    "latestTag": "v1.0.0"
-  },
-  "distribution": {
-    "nexus": {
-      "game": "kingdominc",
-      "modId": 24,
-      "fileId": 8364474,
-      "url": "https://www.nexusmods.com/kingdominc/mods/24",
-      "requirements": [
-        {
-          "name": "Foundation",
-          "url": "https://www.nexusmods.com/kingdominc/mods/18",
-          "minimumVersion": "0.14.0",
-          "type": "nexus"
-        },
-        {
-          "name": "BepInEx 5",
-          "url": "https://github.com/BepInEx/BepInEx/releases",
-          "minimumVersion": "5.x",
-          "type": "offsite"
-        }
-      ],
-      "tags": [
-        "AI Media",
-        "AI-Generated Content",
-        "Quality of Life",
-        "User Interface"
-      ],
-      "tagsVerified": false,
-      "requirementsVerified": true,
-      "runtimeVersionId": "46785078755450"
-    }
-  },
-  "development": {
-    "framework": "Foundation",
-    "language": "C#",
-    "target": "netstandard2.1",
-    "dependencies": [
-      "BepInEx 5",
-      "Foundation 0.14.0"
-    ],
-    "gameIntegration": "Foundation"
-  },
-  "publishing": {
-    "githubReleases": "https://github.com/KingdomIncModding/BetterDeconstruct/releases/tag/v1.0.0",
-    "nexusMods": "https://www.nexusmods.com/kingdominc/mods/24",
-    "archivePreviousReleases": false
-  }
+    "id":  "BetterDeconstruct",
+    "name":  "Better Deconstruct",
+    "version":  "1.0.2",
+    "author":  "Urakka",
+    "description":  "For Kingdom Inc game version 1.0.14. Drag a selection box in Deconstruct mode to deconstruct multiple buildings and decorations at once, with a confirmation dialog showing each building type\u0027s in-game icon, count, category filters, and total refund.",
+    "repository":  {
+                       "platform":  "GitHub",
+                       "owner":  "KingdomIncModding",
+                       "name":  "BetterDeconstruct",
+                       "url":  "https://github.com/KingdomIncModding/BetterDeconstruct",
+                       "branch":  "main",
+                       "visibility":  "public",
+                       "topics":  [
+                                      "kingdom-inc",
+                                      "kingdom-inc-mod",
+                                      "bepinex",
+                                      "harmony",
+                                      "deconstruct",
+                                      "quality-of-life",
+                                      "user-interface",
+                                      "unity"
+                                  ],
+                       "latestTag":  "v1.0.2"
+                   },
+    "distribution":  {
+                         "nexus":  {
+                                       "game":  "kingdominc",
+                                       "modId":  24,
+                                       "fileId":  8364474,
+                                       "url":  "https://www.nexusmods.com/kingdominc/mods/24",
+                                       "requirements":  [
+                                                            {
+                                                                "name":  "Foundation",
+                                                                "url":  "https://www.nexusmods.com/kingdominc/mods/18",
+                                                                "minimumVersion":  "0.14.4",
+                                                                "type":  "nexus",
+                                                                "fileId":  8358756
+                                                            },
+                                                            {
+                                                                "name":  "BepInEx 5",
+                                                                "url":  "https://github.com/BepInEx/BepInEx/releases",
+                                                                "minimumVersion":  "5.x",
+                                                                "type":  "offsite"
+                                                            }
+                                                        ],
+                                       "tags":  [
+                                                    "AI Media",
+                                                    "AI-Generated Content",
+                                                    "Quality of Life",
+                                                    "User Interface"
+                                                ],
+                                       "tagsVerified":  true,
+                                       "requirementsVerified":  true,
+                                       "runtimeVersionId":  "46785078755450"
+                                   }
+                     },
+    "development":  {
+                        "framework":  "Foundation",
+                        "language":  "C#",
+                        "target":  "netstandard2.1",
+                        "dependencies":  [
+                                             "BepInEx 5",
+                                             "Foundation 0.14.4"
+                                         ],
+                        "gameIntegration":  "Foundation"
+                    },
+    "publishing":  {
+                       "githubReleases":  "https://github.com/KingdomIncModding/BetterDeconstruct/releases/tag/v1.0.2",
+                       "nexusMods":  "https://www.nexusmods.com/kingdominc/mods/24",
+                       "archivePreviousReleases":  false
+                   }
 }

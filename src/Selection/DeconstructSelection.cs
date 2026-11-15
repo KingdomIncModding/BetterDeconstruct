@@ -127,6 +127,31 @@ namespace KingdomBetterDeconstruct
             return rows;
         }
 
+        public bool PruneUnavailable(bool ignoreLockedDecorations)
+        {
+            bool changed = false;
+            changed |= PruneList(Buildings, ignoreLocked: false);
+            changed |= PruneList(Containers, ignoreLockedDecorations);
+            changed |= PruneList(Labels, ignoreLockedDecorations);
+            changed |= PruneList(Stickers, ignoreLockedDecorations);
+            return changed;
+        }
+
+        private static bool PruneList(List<WorkspaceObject> items, bool ignoreLocked)
+        {
+            bool changed = false;
+            for (int i = items.Count - 1; i >= 0; i--)
+            {
+                WorkspaceObject item = items[i];
+                if (item == null || !FoundationApi.WorkspaceAccess.IsInActiveWorkspace(item) || (ignoreLocked && item.Locked))
+                {
+                    items.RemoveAt(i);
+                    changed = true;
+                }
+            }
+            return changed;
+        }
+
         public GameMoney CalculateRefund(bool includeBuildings, bool includeContainers, bool includeLabels, bool includeStickers)
         {
             var total = new GameMoney();
@@ -140,7 +165,7 @@ namespace KingdomBetterDeconstruct
                 var refundedByType = new Dictionary<string, int>(StringComparer.Ordinal);
                 foreach (WorkspaceObject element in Buildings)
                 {
-                    if (element == null)
+                    if (element == null || !FoundationApi.WorkspaceAccess.IsInActiveWorkspace(element))
                     {
                         continue;
                     }
@@ -159,41 +184,37 @@ namespace KingdomBetterDeconstruct
 
             if (includeContainers)
             {
-                foreach (WorkspaceObject container in Containers)
-                {
-                    GameMoney refund = container == null ? null : FoundationApi.WorkspaceAccess.Refund(container);
-                    if (refund != null)
-                    {
-                        total.Add(refund);
-                    }
-                }
+                AddDecorationRefunds(Containers, total);
             }
 
             if (includeLabels)
             {
-                foreach (WorkspaceObject label in Labels)
-                {
-                    GameMoney refund = label == null ? null : FoundationApi.WorkspaceAccess.Refund(label);
-                    if (refund != null)
-                    {
-                        total.Add(refund);
-                    }
-                }
+                AddDecorationRefunds(Labels, total);
             }
 
             if (includeStickers)
             {
-                foreach (WorkspaceObject sticker in Stickers)
-                {
-                    GameMoney refund = sticker == null ? null : FoundationApi.WorkspaceAccess.Refund(sticker);
-                    if (refund != null)
-                    {
-                        total.Add(refund);
-                    }
-                }
+                AddDecorationRefunds(Stickers, total);
             }
 
             return total;
+        }
+
+        private static void AddDecorationRefunds(List<WorkspaceObject> decos, GameMoney total)
+        {
+            foreach (WorkspaceObject deco in decos)
+            {
+                if (deco == null || !FoundationApi.WorkspaceAccess.IsInActiveWorkspace(deco))
+                {
+                    continue;
+                }
+
+                GameMoney refund = FoundationApi.WorkspaceAccess.Refund(deco);
+                if (refund != null)
+                {
+                    total.Add(refund);
+                }
+            }
         }
 
         public int ExecuteDeconstruct(bool includeBuildings, bool includeContainers, bool includeLabels, bool includeStickers)
@@ -203,46 +224,131 @@ namespace KingdomBetterDeconstruct
                 return 0;
             }
 
-            int removedCount = 0;
-            var totalRefund = new GameMoney();
-            if (includeBuildings)
+            var liveBuildings = includeBuildings
+                ? Buildings.Where(item => item != null && FoundationApi.WorkspaceAccess.IsInActiveWorkspace(item)).ToList()
+                : new List<WorkspaceObject>();
+            var liveDecos = new List<WorkspaceObject>();
+            if (includeContainers)
+                liveDecos.AddRange(Containers.Where(item => item != null && FoundationApi.WorkspaceAccess.IsInActiveWorkspace(item)));
+            if (includeLabels)
+                liveDecos.AddRange(Labels.Where(item => item != null && FoundationApi.WorkspaceAccess.IsInActiveWorkspace(item)));
+            if (includeStickers)
+                liveDecos.AddRange(Stickers.Where(item => item != null && FoundationApi.WorkspaceAccess.IsInActiveWorkspace(item)));
+
+            if (liveBuildings.Count == 0 && liveDecos.Count == 0)
             {
-                foreach (WorkspaceObject element in Buildings)
+                return 0;
+            }
+
+            // Precompute exact refund and rollback journal before modifying workspace state.
+            GameMoney totalRefund = CalculateRefund(includeBuildings, includeContainers, includeLabels, includeStickers);
+            var buildingSet = new HashSet<WorkspaceObject>(liveBuildings);
+            var workspace = FoundationApi.Kingdom?.ActiveWorkspace;
+            var pipeSnapshots = new List<(string OutGuid, int OutIndex, string InGuid, int InIndex, Vector2Int[] Nodes)>();
+            if (workspace != null && buildingSet.Count > 0)
+            {
+                foreach (var pipe in workspace.Pipes.ToArray())
                 {
-                    if (element == null || !FoundationApi.WorkspaceAccess.IsInActiveWorkspace(element))
-                    {
+                    if (pipe?.ConnectedOutput?.Parent == null || pipe.ConnectedInput?.Parent == null)
                         continue;
-                    }
-
-                    GameMoney refund = FoundationApi.WorkspaceAccess.Refund(element);
-                    if (refund != null && !refund.IsEmpty)
-                    {
-                        totalRefund.Add(refund);
-                    }
-
-                    FoundationApi.WorkspaceAccess.Remove(element);
-                    removedCount += Math.Max(1, element.StackSize);
+                    if (!buildingSet.Contains(pipe.ConnectedOutput.Parent) && !buildingSet.Contains(pipe.ConnectedInput.Parent))
+                        continue;
+                    pipeSnapshots.Add((
+                        pipe.ConnectedOutput.Parent.Guid,
+                        pipe.ConnectedOutput.ParentIndex,
+                        pipe.ConnectedInput.Parent.Guid,
+                        pipe.ConnectedInput.ParentIndex,
+                        pipe.Nodes.ToArray()));
                 }
             }
 
-            if (includeContainers)
+            var buildingSnapshots = new List<(KingdomFoundation.Json.JsonValue Data, GameInventoryItem[][] InputBuffers, GameInventoryItem[][] OutputBuffers)>();
+            foreach (var element in liveBuildings)
             {
-                removedCount += RemoveDecorations(Containers, totalRefund);
+                var inputBuffers = element.Inputs.Select(p => p.BufferedItems.ToArray()).ToArray();
+                var outputBuffers = element.Outputs.Select(p => p.BufferedItems.ToArray()).ToArray();
+                buildingSnapshots.Add((FoundationApi.WorkspaceAccess.Serialize(element), inputBuffers, outputBuffers));
             }
 
-            if (includeLabels)
-            {
-                removedCount += RemoveDecorations(Labels, totalRefund);
-            }
+            var decoSnapshots = liveDecos.Select(deco => FoundationApi.WorkspaceAccess.Serialize(deco)).ToList();
 
-            if (includeStickers)
+            var rollback = new Stack<Action>();
+            int removedCount = 0;
+            try
             {
-                removedCount += RemoveDecorations(Stickers, totalRefund);
-            }
+                for (int i = 0; i < liveBuildings.Count; i++)
+                {
+                    WorkspaceObject element = liveBuildings[i];
+                    var snapshot = buildingSnapshots[i];
+                    FoundationApi.WorkspaceAccess.Remove(element);
+                    removedCount += Math.Max(1, element.StackSize);
+                    rollback.Push(() =>
+                    {
+                        var restored = FoundationApi.WorkspaceAccess.Deserialize(snapshot.Data);
+                        if (restored == null) return;
+                        FoundationApi.WorkspaceAccess.PlaceBuilding(restored);
+                        for (int p = 0; p < snapshot.InputBuffers.Length && p < restored.Inputs.Count; p++)
+                            if (snapshot.InputBuffers[p].Length > 0) restored.Inputs[p].SetBuffer(snapshot.InputBuffers[p]);
+                        for (int p = 0; p < snapshot.OutputBuffers.Length && p < restored.Outputs.Count; p++)
+                            if (snapshot.OutputBuffers[p].Length > 0) restored.Outputs[p].SetBuffer(snapshot.OutputBuffers[p]);
+                    });
+                }
 
-            if (!totalRefund.IsEmpty)
+                for (int i = 0; i < liveDecos.Count; i++)
+                {
+                    WorkspaceObject deco = liveDecos[i];
+                    var snapshotData = decoSnapshots[i];
+                    FoundationApi.WorkspaceAccess.Remove(deco);
+                    removedCount++;
+                    rollback.Push(() =>
+                    {
+                        var restored = FoundationApi.WorkspaceAccess.Deserialize(snapshotData);
+                        if (restored != null)
+                            FoundationApi.WorkspaceAccess.PlaceDecoration(restored);
+                    });
+                }
+
+                if (!totalRefund.IsEmpty)
+                {
+                    FoundationApi.WorkspaceAccess.Grant(totalRefund, countAsIncome: false);
+                }
+            }
+            catch
             {
-                FoundationApi.WorkspaceAccess.Grant(totalRefund, countAsIncome: false);
+                while (rollback.Count > 0)
+                {
+                    try { rollback.Pop()(); }
+                    catch { }
+                }
+
+                if (workspace != null && pipeSnapshots.Count > 0)
+                {
+                    var byGuid = new Dictionary<string, WorkspaceObject>(StringComparer.Ordinal);
+                    foreach (var b in workspace.Buildings)
+                    {
+                        if (!string.IsNullOrEmpty(b.Guid))
+                            byGuid[b.Guid] = b;
+                    }
+
+                    foreach (var ps in pipeSnapshots)
+                    {
+                        try
+                        {
+                            if (!byGuid.TryGetValue(ps.OutGuid, out var outObj) || !byGuid.TryGetValue(ps.InGuid, out var inObj))
+                                continue;
+                            if (ps.OutIndex < 0 || ps.OutIndex >= outObj.Outputs.Count || ps.InIndex < 0 || ps.InIndex >= inObj.Inputs.Count)
+                                continue;
+                            var pipe = FoundationApi.WorkspaceAccess.CreatePipe();
+                            pipe.Connect(outObj.Outputs[ps.OutIndex], inObj.Inputs[ps.InIndex]);
+                            if (ps.Nodes.Length > 0)
+                                pipe.SetNodes(ps.Nodes);
+                            FoundationApi.WorkspaceAccess.PlacePipe(pipe);
+                        }
+                        catch { }
+                    }
+                }
+
+                throw;
             }
 
             if (removedCount > 0)
@@ -255,29 +361,6 @@ namespace KingdomBetterDeconstruct
             }
 
             return removedCount;
-        }
-
-        private static int RemoveDecorations(List<WorkspaceObject> decos, GameMoney totalRefund)
-        {
-            int count = 0;
-            foreach (WorkspaceObject deco in decos)
-            {
-                if (deco == null || !FoundationApi.WorkspaceAccess.IsInActiveWorkspace(deco))
-                {
-                    continue;
-                }
-
-                GameMoney refund = FoundationApi.WorkspaceAccess.Refund(deco);
-                if (refund != null && !refund.IsEmpty)
-                {
-                    totalRefund.Add(refund);
-                }
-
-                FoundationApi.WorkspaceAccess.Remove(deco);
-                count++;
-            }
-
-            return count;
         }
     }
 }

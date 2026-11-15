@@ -7,12 +7,12 @@ using UnityEngine;
 namespace KingdomBetterDeconstruct
 {
     [BepInPlugin(Id, "Better Deconstruct", Version)]
-    [BepInDependency("urakka.kingdominc.foundation", "0.14.0")]
+    [BepInDependency("urakka.kingdominc.foundation", "0.14.4")]
     [NexusMod(24)]
     public sealed class BetterDeconstructPlugin : BaseUnityPlugin
     {
         public const string Id = "urakka.kingdominc.betterdeconstruct";
-        public const string Version = "1.0.1";
+        public const string Version = "1.0.2";
 
         internal static ManualLogSource LogSource;
 
